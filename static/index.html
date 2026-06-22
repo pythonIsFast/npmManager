@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>npm Package Manager</title>
+<link rel="icon" href="data:,">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-2: #232736;
+    --border: #2e3347;
+    --text: #e1e4ed;
+    --text-muted: #8b90a5;
+    --accent: #6c8cff;
+    --accent-hover: #8ba3ff;
+    --danger: #f06060;
+    --success: #4cd964;
+    --warning: #ffb340;
+    --radius: 10px;
+    --shadow: 0 4px 24px rgba(0,0,0,.4);
+  }
+  html { font-size: 14px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; font-size: 1.3rem; font-weight: 700; letter-spacing: -.02em; }
+  .logo svg { width: 28px; height: 28px; }
+  .logo span { color: var(--accent); }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .search-box {
+    display: flex; align-items: center; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; transition: border .2s;
+  }
+  .search-box:focus-within { border-color: var(--accent); }
+  .search-box input {
+    background: none; border: none; outline: none; color: var(--text);
+    padding: 8px 8px; font-size: .9rem; width: 220px;
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+  .btn {
+    padding: 8px 18px; border-radius: 8px; border: none; font-size: .85rem;
+    font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { opacity: .85; }
+  .btn-success { background: var(--success); color: #000; }
+  .btn-success:hover { opacity: .85; }
+  .btn-sm { padding: 5px 12px; font-size: .78rem; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-lg { padding: 14px 28px; font-size: 1rem; }
+
+  main { flex: 1; padding: 24px 32px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+  .tabs {
+    display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+  }
+  .tab {
+    padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent;
+    color: var(--text-muted); font-weight: 600; font-size: .9rem; transition: all .2s; user-select: none;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .badge {
+    background: var(--surface-2); padding: 1px 8px; border-radius: 10px;
+    font-size: .75rem; margin-left: 6px; color: var(--text-muted);
+  }
+  .tab.active .badge { background: var(--accent); color: #fff; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .package-list { list-style: none; }
+  .package-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border); transition: background .15s; gap: 12px;
+  }
+  .package-item:last-child { border-bottom: none; }
+  .package-item:hover { background: var(--surface-2); }
+  .package-info { flex: 1; min-width: 0; }
+  .package-name { font-weight: 600; font-size: .95rem; word-break: break-all; }
+  .package-version { font-size: .82rem; color: var(--text-muted); margin-top: 2px; }
+  .package-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .package-outdated .package-name::after { content: "!"; color: var(--warning); font-weight: 700; margin-left: 4px; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-state p { font-size: .9rem; }
+
+  /* Discovery */
+  .discover-section { margin-bottom: 28px; }
+  .discover-section h3 {
+    font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; color: var(--text);
+  }
+  .discover-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;
+  }
+  .discover-card {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; transition: all .2s; cursor: default;
+  }
+  .discover-card:hover { border-color: var(--accent); background: var(--surface); }
+  .discover-card .name { font-weight: 700; font-size: .9rem; margin-bottom: 4px; }
+  .discover-card .desc {
+    font-size: .8rem; color: var(--text-muted); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .discover-card .meta {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
+  }
+  .discover-card .version { font-size: .78rem; color: var(--text-muted); }
+  .discover-card .install-btn {
+    padding: 4px 14px; border-radius: 6px; border: none; font-size: .78rem;
+    font-weight: 600; cursor: pointer; background: var(--accent); color: #fff; transition: background .2s;
+  }
+  .discover-card .install-btn:hover { background: var(--accent-hover); }
+  .discover-card .install-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    width: 90%; max-width: 520px; max-height: 80vh; overflow: hidden;
+    box-shadow: var(--shadow); animation: modalIn .2s ease;
+  }
+  @keyframes modalIn { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    font-weight: 700; font-size: 1.05rem; display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-close { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 0 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px; overflow-y: auto; max-height: 50vh; }
+  .modal-body input {
+    width: 100%; padding: 10px 14px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+    font-size: .95rem; outline: none; transition: border .2s;
+  }
+  .modal-body input:focus { border-color: var(--accent); }
+
+  .search-results { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+  .search-result-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 10px 12px;
+    background: var(--surface-2); border-radius: 8px; cursor: pointer; transition: background .15s; gap: 8px;
+  }
+  .search-result-item:hover { background: var(--border); }
+  .search-result-info { flex: 1; min-width: 0; }
+  .search-result-name { font-weight: 600; font-size: .9rem; }
+  .search-result-desc { font-size: .8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 12px 20px; border-radius: 8px; font-size: .85rem;
+    font-weight: 500; box-shadow: var(--shadow); animation: toastIn .3s ease; max-width: 380px;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .toast-success { background: var(--success); color: #000; }
+  .toast-error { background: var(--danger); color: #fff; }
+  .toast-info { background: var(--accent); color: #fff; }
+
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .6s linear infinite; display: inline-block; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner-lg { width: 36px; height: 36px; border-width: 3px; }
+
+  .install-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .install-row input { flex: 1; }
+  .install-output { margin-top: 12px; }
+  .outdated-versions { font-size: .8rem; color: var(--text-muted); margin-top: 2px; }
+  .outdated-versions .current { color: var(--warning); }
+  .outdated-versions .latest { color: var(--success); }
+
+  /* Node.js install modal */
+  .nodejs-modal .modal { max-width: 440px; text-align: center; }
+  .nodejs-modal .nodejs-icon {
+    width: 64px; height: 64px; background: #539e43; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+    font-size: 2rem; color: #fff; font-weight: 700;
+  }
+  .nodejs-modal h2 { font-size: 1.2rem; margin-bottom: 8px; }
+  .nodejs-modal p { color: var(--text-muted); font-size: .9rem; margin-bottom: 6px; line-height: 1.5; }
+  .nodejs-modal .progress-bar {
+    width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px;
+    margin: 16px 0; overflow: hidden;
+  }
+  .nodejs-modal .progress-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 4px;
+    transition: width .5s ease; width: 0%;
+  }
+  .nodejs-modal .progress-text { font-size: .85rem; color: var(--text-muted); }
+
+  @media (max-width: 700px) {
+    header { padding: 12px 16px; flex-direction: column; align-items: stretch; }
+    .search-box input { width: 100%; }
+    main { padding: 16px; }
+    .package-item { flex-wrap: wrap; }
+    .package-actions { width: 100%; justify-content: flex-end; }
+    .discover-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3L3 7l9 4 9-4-9-4z"/><path d="M3 17l9 4 9-4"/><path d="M3 12l9 4 9-4"/>
+    </svg>
+    <span>npm</span> Package Manager
+  </div>
+  <div class="header-actions">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Paket suchen...">
+      <button data-action="headerSearch" title="Suchen" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:1rem;">&#128269;</button>
+    </div>
+    <button class="btn btn-primary" data-action="openInstall">+ Installieren</button>
+    <button class="btn btn-outline" data-action="refresh" id="refreshBtn" title="Aktualisieren">&#8635;</button>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <div class="tab active" data-tab="discover">Entdecken</div>
+    <div class="tab" data-tab="installed">Installiert <span class="badge" id="installedBadge">0</span></div>
+    <div class="tab" data-tab="outdated">Updates <span class="badge" id="outdatedBadge">0</span></div>
+  </div>
+
+  <div id="tab-discover" class="tab-content active">
+    <div id="discoverContent"></div>
+  </div>
+
+  <div id="tab-installed" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span>Globale npm-Pakete</span>
+        <span style="font-size:.8rem;color:var(--text-muted)" id="packageCount">0 Pakete</span>
+      </div>
+      <div id="packageList" class="package-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-outdated" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        <span>Veraltete Pakete</span>
+        <button class="btn btn-sm btn-primary" data-action="updateAll">Alle aktualisieren</button>
+      </div>
+      <div id="outdatedList" class="package-list"></div>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="installModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>Paket installieren</span>
+      <button class="modal-close" data-action="closeInstall">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="install-row">
+        <input type="text" id="installInput" placeholder="Paketname eingeben..." autofocus>
+        <button class="btn btn-primary" data-action="doInstall">Installieren</button>
+      </div>
+      <div id="installSearchResults" class="search-results"></div>
+      <div id="installOutput" class="install-output"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay nodejs-modal" id="nodejsModal">
+  <div class="modal">
+    <div class="modal-body" style="padding:32px 24px">
+      <div class="nodejs-icon">N</div>
+      <h2 id="nodejsTitle">Node.js wird ben&ouml;tigt</h2>
+      <p id="nodejsDesc">npm Package Manager ben&ouml;tigt Node.js und npm, die noch nicht installiert sind.</p>
+      <p id="nodejsDetail" style="font-size:.82rem;color:var(--text-muted)">Klicke auf &quot;Installieren&quot;, um Node.js automatisch herunterzuladen und einzurichten.</p>
+      <div class="progress-bar" id="nodejsProgressBar">
+        <div class="progress-bar-fill" id="nodejsProgressFill"></div>
+      </div>
+      <div class="progress-text" id="nodejsProgressText"></div>
+      <br>
+      <button class="btn btn-primary btn-lg" id="nodejsInstallBtn" data-action="installNodejs" style="width:100%">
+        Installieren
+      </button>
+      <button class="btn btn-outline" id="nodejsRetryBtn" data-action="retryStatus" style="width:100%;margin-top:8px;display:none">
+        Erneut pr&uuml;fen
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+(function() {
+  var API = '';
+  var packages = [];
+  var outdatedPkgs = [];
+  var searchTimeout;
+  var nodejsInstallPoll = null;
+
+  function qs(id) { return document.getElementById(id); }
+  function enc(s) { return encodeURIComponent(s); }
+  function dec(s) { return decodeURIComponent(s); }
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function toast(msg, type) {
+    type = type || 'info';
+    var el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = msg;
+    qs('toastContainer').appendChild(el);
+    setTimeout(function() {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .3s';
+      setTimeout(function() { el.remove(); }, 300);
+    }, 3500);
+  }
+
+  function api(url, opts) {
+    opts = opts || {};
+    return fetch(API + url, {
+      headers: { 'Content-Type': 'application/json' },
+      method: opts.method || 'GET',
+      body: opts.body || null,
+    }).then(function(res) {
+      if (!res.ok) {
+        return res.json().then(function(e) { throw new Error(e.detail || res.statusText); });
+      }
+      return res.json();
+    });
+  }
+
+  // === Node.js Check ===
+  function checkNodejs() {
+    api('/api/status').then(function(data) {
+      if (!data.node) {
+        showNodejsModal();
+      } else {
+        loadAll();
+      }
+    }).catch(function() {
+      showNodejsModal();
+    });
+  }
+
+  function showNodejsModal() {
+    qs('nodejsModal').classList.add('show');
+    qs('nodejsInstallBtn').style.display = 'block';
+    qs('nodejsRetryBtn').style.display = 'none';
+    qs('nodejsInstallBtn').disabled = false;
+    qs('nodejsInstallBtn').textContent = 'Node.js installieren';
+    qs('nodejsProgressFill').style.width = '0%';
+    qs('nodejsProgressText').textContent = '';
+    qs('nodejsTitle').textContent = 'Node.js wird benoetigt';
+    qs('nodejsDesc').textContent = 'npm Package Manager benoetigt Node.js und npm, die noch nicht installiert sind.';
+    qs('nodejsDetail').style.display = 'block';
+    qs('nodejsProgressBar').style.display = 'none';
+  }
+
+  function startNodejsInstall() {
+    qs('nodejsInstallBtn').disabled = true;
+    qs('nodejsInstallBtn').textContent = 'Wird installiert...';
+    qs('nodejsInstallBtn').setAttribute('data-action', '');
+    qs('nodejsProgressBar').style.display = 'block';
+    qs('nodejsDetail').style.display = 'none';
+    qs('nodejsRetryBtn').style.display = 'none';
+
+    api('/api/install-nodejs', { method: 'POST' }).then(function(data) {
+      if (data.status === 'done') {
+        qs('nodejsTitle').textContent = 'Node.js bereits installiert!';
+        qs('nodejsDesc').textContent = 'Die Seite wird neu geladen.';
+        qs('nodejsInstallBtn').textContent = 'Weiter';
+        qs('nodejsInstallBtn').disabled = false;
+        qs('nodejsInstallBtn').setAttribute('data-action', 'nodejsDone');
+        qs('nodejsProgressFill').style.width = '100%';
+        qs('nodejsProgressText').textContent = 'Bereit.';
+      } else {
+        pollInstallStatus();
+      }
+    }).catch(function(e) {
+      qs('nodejsInstallBtn').disabled = false;
+      qs('nodejsInstallBtn').textContent = 'Fehler - erneut versuchen';
+      qs('nodejsInstallBtn').setAttribute('data-action', 'installNodejs');
+      toast('Fehler: ' + e.message, 'error');
+    });
+  }
+
+  function pollInstallStatus() {
+    if (nodejsInstallPoll) clearTimeout(nodejsInstallPoll);
+    api('/api/install-status').then(function(data) {
+      qs('nodejsProgressFill').style.width = data.progress + '%';
+      qs('nodejsProgressText').textContent = data.message;
+
+      if (data.status === 'done') {
+        qs('nodejsTitle').textContent = 'Node.js installiert!';
+        qs('nodejsDesc').textContent = 'Die Installation wurde erfolgreich abgeschlossen.';
+        qs('nodejsInstallBtn').textContent = 'Weiter';
+        qs('nodejsInstallBtn').disabled = false;
+        qs('nodejsInstallBtn').setAttribute('data-action', 'nodejsDone');
+        qs('nodejsRetryBtn').style.display = 'none';
+      } else if (data.status === 'failed') {
+        qs('nodejsTitle').textContent = 'Installation fehlgeschlagen';
+        qs('nodejsDesc').textContent = data.message;
+        qs('nodejsInstallBtn').textContent = 'Erneut versuchen';
+        qs('nodejsInstallBtn').disabled = false;
+        qs('nodejsInstallBtn').setAttribute('data-action', 'installNodejs');
+        qs('nodejsRetryBtn').style.display = 'block';
+      } else {
+        nodejsInstallPoll = setTimeout(pollInstallStatus, 1000);
+      }
+    }).catch(function() {
+      nodejsInstallPoll = setTimeout(pollInstallStatus, 2000);
+    });
+  }
+
+  // === Discovery ===
+  function loadDiscover() {
+    api('/api/discover').then(function(data) {
+      renderDiscover(data.sections || []);
+    }).catch(function() {
+      qs('discoverContent').innerHTML = '<div class="empty-state"><p>Entdecken konnte nicht geladen werden.</p></div>';
+    });
+  }
+
+  function renderDiscover(sections) {
+    var container = qs('discoverContent');
+    if (!sections.length) {
+      container.innerHTML = '<div class="empty-state"><p>Keine Pakete gefunden.</p></div>';
+      return;
+    }
+    var html = '';
+    for (var s = 0; s < sections.length; s++) {
+      var section = sections[s];
+      html += '<div class="discover-section">';
+      html += '<h3>' + esc(section.title) + '</h3>';
+      html += '<div class="discover-grid">';
+      var pkgs = section.packages || [];
+      for (var i = 0; i < pkgs.length; i++) {
+        var p = pkgs[i];
+        html += '<div class="discover-card">';
+        html += '<div class="name">' + esc(p.name) + '</div>';
+        html += '<div class="desc">' + esc(p.description || 'Keine Beschreibung') + '</div>';
+        html += '<div class="meta">';
+        html += '<span class="version">v' + esc(p.version) + '</span>';
+        html += '<button class="install-btn" data-action="discoverInstall" data-pkg="' + enc(p.name) + '">Installieren</button>';
+        html += '</div></div>';
+      }
+      html += '</div></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  // === Packages ===
+  function loadPackages() {
+    api('/api/packages').then(function(data) {
+      packages = data.packages || [];
+      renderPackages();
+    }).catch(function(e) {
+      toast('Fehler beim Laden: ' + e.message, 'error');
+    });
+  }
+
+  function loadOutdated() {
+    api('/api/outdated').then(function(data) {
+      outdatedPkgs = data.packages || [];
+      renderOutdated();
+    }).catch(function() {});
+  }
+
+  function loadAll() {
+    loadDiscover();
+    loadPackages();
+    loadOutdated();
+  }
+
+  function renderPackages() {
+    qs('installedBadge').textContent = packages.length;
+    qs('packageCount').textContent = packages.length + ' Pakete';
+    var container = qs('packageList');
+    if (packages.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Keine globalen npm-Pakete installiert.</p></div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < packages.length; i++) {
+      var p = packages[i];
+      var outdated = false;
+      for (var j = 0; j < outdatedPkgs.length; j++) {
+        if (outdatedPkgs[j].name === p.name) { outdated = true; break; }
+      }
+      html += '<div class="package-item' + (outdated ? ' package-outdated' : '') + '">';
+      html += '<div class="package-info">';
+      html += '<div class="package-name">' + esc(p.name) + '</div>';
+      html += '<div class="package-version">v' + esc(p.version) + (p.missing ? ' (fehlt)' : '') + (outdated ? ' - Update verfuegbar' : '') + '</div>';
+      html += '</div><div class="package-actions">';
+      if (outdated) {
+        html += '<button class="btn btn-sm btn-success" data-action="update" data-pkg="' + enc(p.name) + '">Update</button>';
+      }
+      html += '<button class="btn btn-sm btn-outline" data-action="reinstall" data-pkg="' + enc(p.name) + '">Neu installieren</button>';
+      html += '<button class="btn btn-sm btn-danger" data-action="uninstall" data-pkg="' + enc(p.name) + '">Entfernen</button>';
+      html += '</div></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function renderOutdated() {
+    qs('outdatedBadge').textContent = outdatedPkgs.length;
+    var container = qs('outdatedList');
+    if (outdatedPkgs.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Alle Pakete sind aktuell.</p></div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < outdatedPkgs.length; i++) {
+      var p = outdatedPkgs[i];
+      html += '<div class="outdated-item" style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);gap:12px;">';
+      html += '<div style="flex:1"><div style="font-weight:600;font-size:.9rem">' + esc(p.name) + '</div>';
+      html += '<div class="outdated-versions"><span class="current">' + esc(p.current) + '</span> &rarr; <span class="latest">' + esc(p.latest) + '</span></div></div>';
+      html += '<button class="btn btn-sm btn-success" data-action="update" data-pkg="' + enc(p.name) + '">Update</button></div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function doInstall() {
+    var input = qs('installInput');
+    var name = input.value.trim();
+    if (!name) { toast('Bitte Paketnamen eingeben', 'error'); return; }
+    input.disabled = true;
+    var btn = document.querySelector('#installModal .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'Installiere...';
+    api('/api/packages/install', { method: 'POST', body: JSON.stringify({ name: name }) }).then(function(result) {
+      toast(name + ' erfolgreich installiert!', 'success');
+      qs('installOutput').innerHTML = '<pre style="font-size:.78rem;color:var(--success);white-space:pre-wrap">' + esc(result.output) + '</pre>';
+      input.value = '';
+      qs('installSearchResults').innerHTML = '';
+      loadPackages(); loadOutdated();
+    }).catch(function(e) {
+      toast('Fehler: ' + e.message, 'error');
+      qs('installOutput').innerHTML = '<pre style="font-size:.78rem;color:var(--danger);white-space:pre-wrap">' + esc(e.message) + '</pre>';
+    }).then(function() {
+      input.disabled = false; btn.disabled = false;
+      btn.textContent = 'Installieren'; input.focus();
+    });
+  }
+
+  function installDiscoverPkg(name) {
+    api('/api/packages/install', { method: 'POST', body: JSON.stringify({ name: name }) }).then(function() {
+      toast(name + ' installiert!', 'success');
+      loadPackages(); loadOutdated();
+    }).catch(function(e) {
+      toast('Fehler: ' + e.message, 'error');
+    });
+  }
+
+  function uninstallPkg(name) {
+    if (!confirm(name + ' wirklich entfernen?')) return;
+    api('/api/packages/uninstall', { method: 'POST', body: JSON.stringify({ name: name }) }).then(function() {
+      toast(name + ' entfernt', 'info');
+      loadPackages(); loadOutdated();
+    }).catch(function(e) { toast('Fehler: ' + e.message, 'error'); });
+  }
+
+  function updatePkg(name) {
+    api('/api/packages/update', { method: 'POST', body: JSON.stringify({ name: name }) }).then(function() {
+      toast(name + ' aktualisiert', 'success');
+      loadPackages(); loadOutdated();
+    }).catch(function(e) { toast('Fehler: ' + e.message, 'error'); });
+  }
+
+  function updateAll() {
+    var btn = document.querySelector('#tab-outdated .btn-primary');
+    btn.disabled = true; btn.textContent = 'Aktualisiere...';
+    api('/api/packages/update-all', { method: 'POST' }).then(function() {
+      toast('Alle Pakete aktualisiert', 'success');
+      loadPackages(); loadOutdated();
+    }).catch(function(e) { toast('Fehler: ' + e.message, 'error');
+    }).then(function() { btn.disabled = false; btn.textContent = 'Alle aktualisieren'; });
+  }
+
+  function debounceSearch(val) {
+    clearTimeout(searchTimeout);
+    if (val.trim().length < 2) { qs('installSearchResults').innerHTML = ''; return; }
+    searchTimeout = setTimeout(function() { doSearch(val.trim()); }, 300);
+  }
+
+  function doSearch(query) {
+    var container = qs('installSearchResults');
+    container.innerHTML = '<div style="text-align:center;padding:12px"><div class="spinner"></div></div>';
+    api('/api/search?q=' + enc(query)).then(function(data) {
+      var results = data.results || [];
+      if (results.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:12px;font-size:.85rem">Keine Ergebnisse</div>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < results.length; i++) {
+        var r = results[i];
+        html += '<div class="search-result-item" data-action="searchSelect" data-pkg="' + enc(r.name) + '">';
+        html += '<div class="search-result-info"><div class="search-result-name">' + esc(r.name) + '</div>';
+        html += '<div class="search-result-desc">' + esc(r.description || 'Keine Beschreibung') + '</div></div>';
+        html += '<div class="search-result-version">v' + esc(r.version) + '</div></div>';
+      }
+      container.innerHTML = html;
+    }).catch(function() {
+      container.innerHTML = '<div style="color:var(--danger);text-align:center;padding:12px">Suche fehlgeschlagen</div>';
+    });
+  }
+
+  function switchTab(name) {
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].classList.toggle('active', tabs[i].getAttribute('data-tab') === name);
+    }
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+      contents[i].classList.toggle('active', contents[i].id === 'tab-' + name);
+    }
+    if (name === 'outdated') loadOutdated();
+    if (name === 'discover') loadDiscover();
+  }
+
+  function openInstallModal() {
+    qs('installModal').classList.add('show');
+    qs('installInput').value = '';
+    qs('installSearchResults').innerHTML = '';
+    qs('installOutput').innerHTML = '';
+    setTimeout(function() { qs('installInput').focus(); }, 100);
+  }
+
+  function closeInstallModal() {
+    qs('installModal').classList.remove('show');
+  }
+
+  // === Event Delegation ===
+  document.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.getAttribute('data-action');
+    var pkg = el.getAttribute('data-pkg');
+
+    if (action === 'headerSearch') {
+      var query = qs('searchInput').value.trim();
+      if (query) { openInstallModal(); qs('installInput').value = query; doSearch(query); }
+    } else if (action === 'openInstall') {
+      openInstallModal();
+    } else if (action === 'closeInstall' || action === 'modalOverlay') {
+      closeInstallModal();
+    } else if (action === 'refresh') {
+      loadAll();
+      toast('Aktualisiert', 'info');
+    } else if (action === 'doInstall') {
+      doInstall();
+    } else if (action === 'searchSelect') {
+      if (pkg) { qs('installInput').value = dec(pkg); qs('installSearchResults').innerHTML = ''; doInstall(); }
+    } else if (action === 'update') {
+      if (pkg) updatePkg(dec(pkg));
+    } else if (action === 'reinstall') {
+      if (pkg) updatePkg(dec(pkg));
+    } else if (action === 'uninstall') {
+      if (pkg) uninstallPkg(dec(pkg));
+    } else if (action === 'updateAll') {
+      updateAll();
+    } else if (action === 'discoverInstall') {
+      if (pkg) installDiscoverPkg(dec(pkg));
+    } else if (action === 'installNodejs') {
+      startNodejsInstall();
+    } else if (action === 'nodejsDone') {
+      qs('nodejsModal').classList.remove('show');
+      loadAll();
+    } else if (action === 'retryStatus') {
+      qs('nodejsModal').classList.remove('show');
+      checkNodejs();
+    }
+  });
+
+  qs('installInput').addEventListener('input', function(e) { debounceSearch(e.target.value); });
+  qs('installInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') doInstall(); });
+  qs('installModal').addEventListener('click', function(e) { if (e.target === this) closeInstallModal(); });
+
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) {
+    (function(tab) {
+      tab.addEventListener('click', function() {
+        var name = tab.getAttribute('data-tab');
+        if (name) switchTab(name);
+      });
+    })(tabs[i]);
+  }
+
+  // === Start ===
+  checkNodejs();
+})();
+</script>
+</body>
+</html>

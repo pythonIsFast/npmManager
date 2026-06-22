@@ -1,39 +1,39 @@
 # 📦 npm Package Manager
 
-Web-GUI zum Verwalten globaler npm-Pakete unter Windows. Keine Abhängigkeiten – nur Doppelklick auf `start.bat`.
+Web-based GUI to manage global npm packages on Windows. No dependencies – just double-click `start.bat`.
 
 ## ✨ Features
 
-🌐 **Dark-Theme Web-GUI** – modernes SPA, kein CLI-Wissen nötig  
-🔍 **Entdecken** – Beliebte Pakete live aus der npm Registry, kategorisiert  
-📋 **Installierte Pakete** – Anzeigen, suchen & deinstallieren  
-⬆️ **Updates** – Veraltete Pakete erkennen & einzeln oder alle aktualisieren  
-🔎 **Live-Suche** – npm Registry durchsuchen & mit einem Klick installieren  
-🚀 **Node.js Auto-Install** – Fehlt Node.js? Ein Klick installiert es  
-🔐 **Auto-Admin** – Fordert bei Bedarf Admin-Rechte per UAC an  
-🔌 **Port-Fallback** – Port 4950 belegt? Automatisch 4951–4998
+🌐 **Dark-theme Web GUI** – modern SPA, no CLI knowledge required  
+🔍 **Discover** – Browse popular packages live from the npm registry, categorized  
+📋 **Installed packages** – View, search & uninstall global packages  
+⬆️ **Updates** – Spot outdated packages and update individually or all at once  
+🔎 **Live search** – Search the npm registry and install with one click  
+🚀 **Auto Node.js install** – Missing Node.js? One click installs it  
+🔐 **Auto-admin** – Prompts for admin rights via UAC when needed  
+🔌 **Port fallback** – Port 4950 taken? Auto-tries 4951–4998
 
-## 🚀 Start
+## 🚀 Getting started
 
 ```powershell
 .\start.bat
 ```
 
-Dann im Browser öffnen: **[http://127.0.0.1:4950](http://127.0.0.1:4950)**
+Open in your browser: **[http://127.0.0.1:4950](http://127.0.0.1:4950)**
 
-## 📁 Dateien
+## 📁 Files
 
-| Datei | Zweck |
+| File | Purpose |
 |---|---|
 | `start.bat` | Launcher |
-| `server.ps1` | PowerShell HTTP Server |
+| `server.ps1` | PowerShell HTTP server |
 | `static/index.html` | Frontend |
 
-## 🔧 Systemvoraussetzungen
+## 🔧 Requirements
 
 - Windows 7+, PowerShell 5.1+
-- Node.js wird bei Bedarf automatisch installiert
+- Node.js is installed automatically if missing
 
-## 📜 Lizenz
+## 📜 License
 
 GNU General Public License v3

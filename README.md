@@ -1,2 +1,2 @@
 # npmManager
-This is a npm manger built for Windows in Powershell.
+This is a npm manager built for Windows in Powershell.
